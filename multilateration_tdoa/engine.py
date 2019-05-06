@@ -6,14 +6,48 @@ from scipy.optimize import minimize
 from .geometry import Point, Circle
 from .methods import LSEMethod
 from time import time
+from collections import defaultdict
+
+class TDoAMeasurement(object):
+    def __init__(self, anchorA, anchorB, tdoa, _time=None):
+        self.last_measurement = _time or time()
+        self.tdoa = tdoa
+        self.anchorA = anchorA
+        self.anchorB = anchorB
+
+
+class TDoAMeasurements(object):
+    def __init__(self):
+        self.measurements = []
+
+    def add_measure(measurement):
+        self.measurements.append(measurement)
+
+    def get_measurements(self):
+        return self.measurements
 
 
 class Anchor(object):
-    def __init__(self, ID, position, measure = None):
+    anchors = {}
+
+    def __init__(self, position, ID=None):
+        if ID is None:
+            ID=str(position)
+        ID=str(ID)
         self.position = position
-        self.ID = str(ID)
+        self.ID = ID
         self.last_seen = time()
-        self.measure = measure
+
+    def __new__(class_, position, ID=None):
+        if ID is None:
+            ID=str(position)
+        ID=str(ID)
+
+        if ID in class_.anchors:
+            class_.anchors[ID].position = position
+        else:
+            class_.anchors[ID] =  object.__new__(class_, position, ID)
+        return class_.anchors[ID]
 
     @property
     def position(self):

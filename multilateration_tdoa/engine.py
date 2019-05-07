@@ -55,14 +55,10 @@ class TDoAEngine(object):
 
     def cost_function_2D(self, last_result, measurements, height):
         e = 0
-        # other = Point(last_result.append(height))
-        print(last_result)
         other = Point(last_result)
         other.z = height
         for mea in measurements:
-            # print(mea.anchorA.position, last_result)
             error = mea.tdoa - (mea.anchorA.position.dist(other) - mea.anchorB.position.dist(other))
-            # print(error, mea)
             e += error**2
         return e
 

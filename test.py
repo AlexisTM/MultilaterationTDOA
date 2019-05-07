@@ -1,36 +1,79 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from multilateration_tdoa import Engine
+from multilateration_tdoa import TDoAEngine, TDoAMeasurement, Anchor, Point
 from math import sqrt
+import random
+random.seed()
 
-engine = Engine(goal=[None, None, None]) # To fix that the resulting height should be 2 meters
+NOISE = 0.25
+
+def noise():
+    return random.random()*NOISE
+
+engine = TDoAEngine(goal=[None, None, None], n_measurements=6) # To fix that the resulting height should be 2 meters
 # P=multilateration.Project() # for 3D, simply do not set a goal
-engine.add_anchor('anchor_A',(1,0,1))
-engine.add_anchor('anchor_B',(-1,0,1))
-engine.add_anchor('anchor_C',(1,1,1))
-engine.add_measure_id('anchor_A',sqrt(2))
-engine.add_measure_id('anchor_B',sqrt(2))
-engine.add_measure_id('anchor_C',sqrt(3))
-print(engine.solve())
 
-# Or using anchors linked to measurements directly
-engine2 = Engine(goal=[None, None, 2.0])
-# If the ID is not given, it will be generated to str(position_of_anchor)
-engine2.add_measure((1,0,1), sqrt(2), ID="anchor_A")
-engine2.add_measure((-1,0,1), sqrt(2), ID="anchor_B")
-engine2.add_measure((1,1,1), sqrt(3))
 
-print(engine2.solve())
+A = Anchor((3,3,0))
+B = Anchor((-2,2,0))
+C = Anchor((2,-4,0))
+D = Anchor((-3,-2,0))
 
-engine3 = Engine(goal=[None, None, None]) # To fix that the resulting height should be 2 meters
-# P=multilateration.Project() # for 3D, simply do not set a goal
-engine3.add_anchor('anchor_A',(1,0,1))
-engine3.add_anchor('anchor_B',(-1,0,1))
-engine3.add_anchor('anchor_C',(1,1,1))
-engine3.add_anchor('anchor_D',(-1,-1,-1))
-engine3.add_measure_id('anchor_A',sqrt(2))
-engine3.add_measure_id('anchor_B',sqrt(2))
-engine3.add_measure_id('anchor_C',sqrt(3))
-engine3.add_measure_id('anchor_D',sqrt(3))
-print(engine3.solve())
+engine.add(TDoAMeasurement(A, C, -0.23 + noise()))
+engine.add(TDoAMeasurement(A, B, 1.41 + noise()))
+engine.add(TDoAMeasurement(A, D, 0.64 + noise()))
+engine.add(TDoAMeasurement(B, C, -1.64 + noise()))
+engine.add(TDoAMeasurement(B, D, -0.78 + noise()))
+engine.add(TDoAMeasurement(C, D, 0.87 + noise()))
+
+result = engine.solve()
+print(result)
+expected = Point(0,0,0)
+print("Error = ", expected.dist(result))
+# Expected result = (0,0,0)
+
+
+engine.add(TDoAMeasurement(A, C, 2.2 + noise()))
+engine.add(TDoAMeasurement(A, B, -0.29 + noise()))
+engine.add(TDoAMeasurement(A, D, 0.12 + noise()))
+engine.add(TDoAMeasurement(B, C, 2.49 + noise()))
+engine.add(TDoAMeasurement(B, D, 0.41 + noise()))
+engine.add(TDoAMeasurement(C, D, -2.08 + noise()))
+
+result = engine.solve()
+print(result)
+expected = Point(1.58,-1.51,0)
+print("Error = ", expected.dist(result))
+# Expected result P= (1.58,-1.51)
+
+
+
+A = Anchor((3,3,1))
+B = Anchor((-2,2,2))
+C = Anchor((2,-4,3))
+D = Anchor((-3,-2,2))
+
+engine.add(TDoAMeasurement(A, C, 1.09 + noise()))
+engine.add(TDoAMeasurement(A, B, -0.51 + noise()))
+engine.add(TDoAMeasurement(A, D, -0.13 + noise()))
+engine.add(TDoAMeasurement(B, C, 1.6 + noise()))
+engine.add(TDoAMeasurement(B, D, 0.38 + noise()))
+engine.add(TDoAMeasurement(C, D, -1.22 + noise()))
+
+m = engine.get()
+engine.measurements = m
+engine.last_result.z = 0.31
+# P= (1.58,-1.51,0.31)
+result = engine.solve()
+
+print(result)
+expected = Point(1.58,-1.51,0.31)
+print("Error3D = ", expected.dist(result))
+
+
+engine.measurements = m
+result = engine.solve_2D(0.31)
+result.z = 0.31
+print(result)
+print("Error2D = ", expected.dist(result))

@@ -10,21 +10,69 @@ from collections import defaultdict
 
 class TDoAMeasurement(object):
     def __init__(self, anchorA, anchorB, tdoa, _time=None):
-        self.last_measurement = _time or time()
+        self.time = _time or time()
         self.tdoa = tdoa
         self.anchorA = anchorA
         self.anchorB = anchorB
 
 
-class TDoAMeasurements(object):
-    def __init__(self):
+class TDoAEngine(object):
+    def __init__(self, goal=[None, None, None], n_measurements=8):
         self.measurements = []
+        self.n_measurements = n_measurements
+        self.goal = goal
+        self.last_result = Point(0,0,0)
 
-    def add_measure(measurement):
+    def add(self, measurement):
         self.measurements.append(measurement)
 
-    def get_measurements(self):
-        return self.measurements
+    def add_get(self, measurement, n_measurements = 8):
+        self.add(measurement)
+        if len(self.measurements) >= self.n_measurements:
+            return self.get()
+
+    def get(self):
+        measures = self.measurements
+        self.measurements = []
+        return measures
+
+    def cost_function(self, last_result, measurements):
+        e = 0
+        for mea in measurements:
+            # print(mea.anchorA.position, last_result)
+            error = mea.tdoa - (mea.anchorA.position.dist(last_result) - mea.anchorB.position.dist(last_result))
+            # print(error, mea)
+            e += error**2
+        return e
+
+    def solve(self):
+        measurements = self.get()
+        approx = np.array([self.last_result.x, self.last_result.y, self.last_result.z])
+        result = minimize(self.cost_function, approx, args=(measurements), method='BFGS')
+        ans = list(result.x)
+        self.last_result = Point(ans)
+        return Point(ans)
+
+    def cost_function_2D(self, last_result, measurements, height):
+        e = 0
+        # other = Point(last_result.append(height))
+        print(last_result)
+        other = Point(last_result)
+        other.z = height
+        for mea in measurements:
+            # print(mea.anchorA.position, last_result)
+            error = mea.tdoa - (mea.anchorA.position.dist(other) - mea.anchorB.position.dist(other))
+            # print(error, mea)
+            e += error**2
+        return e
+
+    def solve_2D(self, height):
+        measurements = self.get()
+        approx = np.array([self.last_result.x, self.last_result.y])
+        result = minimize(self.cost_function_2D, approx, args=(measurements, height), method='BFGS')
+        ans = list(result.x)
+        self.last_result = Point(ans)
+        return Point(ans)
 
 
 class Anchor(object):
@@ -80,41 +128,3 @@ class Anchor(object):
 
     def __str__(self):
         return "".join(['Anchor:', self.ID, '@', self.position.__str__()])
-
-
-class Engine(object):
-    def __init__(self, goal=[None, None, None], timeout=0.1):
-        self.anchors = {}
-        self.method = LSEMethod(goal)
-        self.timeout = timeout
-
-    def add_anchor(self, ID, position):
-        """Add a certain ID"""
-        if ID in self.anchors:
-            self.anchors[ID].position = position
-        else:
-            self.anchors[ID] = Anchor(ID, position)
-
-    def add_measure_id(self, ID, measure):
-        """Add a measurement for a certain anchor ID"""
-        if ID in self.anchors:
-            self.anchors[ID].add_measure(measure)
-        else:
-            print("anchor " + str(ID) + " does not exist yet")
-
-    def add_measure(self, position, measure, ID=None):
-        """Distance measurement from an anchor position"""
-        if ID is None:
-            ID = str(position)
-
-        if ID not in self.anchors:
-            self.anchors[ID] = Anchor(ID, position, measure)
-        else:
-            self.anchors[ID] = measure
-
-    def solve(self):
-        cA = []
-        for ID, anchor in self.anchors.items():
-            if anchor.valid(self.timeout):
-                cA.append(anchor.get())
-        return self.method.solve(cA)

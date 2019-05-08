@@ -20,6 +20,9 @@ B = Anchor((-2,2,0))
 C = Anchor((2,-4,0))
 D = Anchor((-3,-2,0))
 
+
+
+
 engine.add(TDoAMeasurement(A, C, -0.23 + noise()))
 engine.add(TDoAMeasurement(A, B, 1.41 + noise()))
 engine.add(TDoAMeasurement(A, D, 0.64 + noise()))
@@ -27,7 +30,7 @@ engine.add(TDoAMeasurement(B, C, -1.64 + noise()))
 engine.add(TDoAMeasurement(B, D, -0.78 + noise()))
 engine.add(TDoAMeasurement(C, D, 0.87 + noise()))
 
-result = engine.solve()
+result, optimize_result = engine.solve()
 print(result)
 expected = Point(0,0,0)
 print("Error = ", expected.dist(result))
@@ -41,7 +44,7 @@ engine.add(TDoAMeasurement(B, C, 2.49 + noise()))
 engine.add(TDoAMeasurement(B, D, 0.41 + noise()))
 engine.add(TDoAMeasurement(C, D, -2.08 + noise()))
 
-result = engine.solve()
+result, optimize_result = engine.solve()
 print(result)
 expected = Point(1.58,-1.51,0)
 print("Error = ", expected.dist(result))
@@ -65,7 +68,7 @@ m = engine.get()
 engine.measurements = m
 engine.last_result.z = 0.31
 # P= (1.58,-1.51,0.31)
-result = engine.solve()
+result, optimize_result = engine.solve()
 
 print(result)
 expected = Point(1.58,-1.51,0.31)
@@ -73,7 +76,9 @@ print("Error3D = ", expected.dist(result))
 
 
 engine.measurements = m
-result = engine.solve_2D(0.31)
+result, optimize_result = engine.solve_2D(0.31)
 result.z = 0.31
 print(result)
 print("Error2D = ", expected.dist(result))
+
+print(optimize_result.hess_inv)

@@ -15,6 +15,16 @@ class TDoAMeasurement(object):
         self.anchorA = anchorA
         self.anchorB = anchorB
 
+    def __str__(self):
+        return "".join([
+            '\nA: ', str(self.anchorA.position),
+            '\nB: ', str(self.anchorB.position),
+            '\ntdoa; ', str(self.tdoa)
+        ])
+
+    def __repr__(self):
+        return self.__str__()
+
 
 class TDoAEngine(object):
     def __init__(self, goal=[None, None, None], n_measurements=8):
@@ -45,13 +55,13 @@ class TDoAEngine(object):
             e += error**2
         return e
 
-    def solve(self):
+    def solve(self, method='BFGS'):
         measurements = self.get()
         approx = np.array([self.last_result.x, self.last_result.y, self.last_result.z])
-        result = minimize(self.cost_function, approx, args=(measurements), method='BFGS')
+        result = minimize(self.cost_function, approx, args=(measurements), method=method)
         ans = list(result.x)
         self.last_result = Point(ans)
-        return Point(ans)
+        return Point(ans), result
 
     def cost_function_2D(self, last_result, measurements, height):
         e = 0
@@ -62,13 +72,13 @@ class TDoAEngine(object):
             e += error**2
         return e
 
-    def solve_2D(self, height):
+    def solve_2D(self, height, method='BFGS'):
         measurements = self.get()
         approx = np.array([self.last_result.x, self.last_result.y])
-        result = minimize(self.cost_function_2D, approx, args=(measurements, height), method='BFGS')
+        result = minimize(self.cost_function_2D, approx, args=(measurements, height), method=method)
         ans = list(result.x)
         self.last_result = Point(ans)
-        return Point(ans)
+        return Point(ans), result
 
 
 class Anchor(object):
@@ -92,6 +102,9 @@ class Anchor(object):
         else:
             class_.anchors[ID] =  object.__new__(class_, position, ID)
         return class_.anchors[ID]
+
+    def __getitem__(self, id):
+        return self.position[id]
 
     @property
     def position(self):

@@ -63,12 +63,11 @@ METHODS = ['Nelder-Mead',
 METHOD = 'BFGS'
 N_MEASUREMENTS = 15
 
-
 def test(engine, measurements, method='BFGS'):
     engine.measurements = measurements
-    result, optimize_result = engine.solve_2D(height = 0, method = method)
-    print result
-    print method, str(optimize_result.hess_inv)
+    result, hess_inv = engine.solve_2D(height = 0, method = method)
+    print(result)
+    print(method, str(hess_inv))
     errors[method] += P.dist(result)**2
 
 

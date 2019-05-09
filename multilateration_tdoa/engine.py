@@ -105,7 +105,7 @@ class TDoAEngine(object):
         self.prune()
         if self.ready():
             return self.solve_2D(height)
-        return None
+        return None, None
     
     def ready(self):
         """Returns true if we have the expected number of measurements in our buffer."""

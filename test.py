@@ -20,9 +20,6 @@ B = Anchor((-2,2,0))
 C = Anchor((2,-4,0))
 D = Anchor((-3,-2,0))
 
-
-
-
 engine.add(TDoAMeasurement(A, C, -0.23 + noise()))
 engine.add(TDoAMeasurement(A, B, 1.41 + noise()))
 engine.add(TDoAMeasurement(A, D, 0.64 + noise()))
@@ -80,5 +77,3 @@ result, hess_inv = engine.solve_2D(0.31)
 result.z = 0.31
 print(result)
 print("Error2D = ", expected.dist(result))
-
-print(hess_inv)

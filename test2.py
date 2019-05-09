@@ -26,37 +26,45 @@ def tdoa(A,B,P):
 def fakeTDOA(A,B,P):
     return TDoAMeasurement(A, B, tdoa(A,B,P))
 
-A = Anchor((0,0,0.52))
-B = Anchor((9.83,0.0,1.75))
-C = Anchor((9.69,4.92,1.03))
-D = Anchor((9.69,9.78,1.79))
-E = Anchor((0.23,9.57, 0.5))
-F = Anchor((0.14,4.80, 1.76))
-G = Anchor((9.69,14.68, 1.5))
+# A = Anchor((0,0,0.52))
+# B = Anchor((9.83,0.0,1.75))
+# C = Anchor((9.69,4.92,1.03))
+# D = Anchor((9.69,9.78,1.79))
+# E = Anchor((0.23,9.57, 0.5))
+# F = Anchor((0.14,4.80, 1.76))
+# G = Anchor((9.69,14.68, 1.5))
+# H = Anchor((0.30,14.68, 1.5))
+A = Anchor((0,0,0.31))
+B = Anchor((9.83,0.0,0.31))
+C = Anchor((15.0,4.92,0.31))
+D = Anchor((15.0,9.78,0.31))
+E = Anchor((-5.0,9.57, 0.31))
+F = Anchor((-5.0,4.80, 0.31))
+G = Anchor((9.69,14.68, 0.31))
+H = Anchor((0.30,14.68, 0.31))
 
-anchors = [A,B,C,D,E,F,G]
+anchors = [A,B,C,D,E,F,G,H]
 
 METHODS = ['Nelder-Mead',
-            'Powell',
-            'CG',
-            'BFGS',
-            'Newton-CG',
-            'L-BFGS-B',
-            'TNC',
-            'COBYLA',
-            'SLSQP',
-            'trust-constr',
-            'dogleg',
-            'trust-ncg',
-            'trust-krylov',
-            'trust-exact']
-
+           'Powell',
+           'CG',
+           'BFGS',
+           'Newton-CG',
+           'L-BFGS-B',
+           'TNC',
+           'COBYLA',
+           'SLSQP',
+           'trust-constr',
+           'dogleg',
+           'trust-ncg',
+           'trust-krylov',
+           'trust-exact']
 
 METHOD = 'BFGS'
+N_MEASUREMENTS = 15
 
 
 def test(engine, measurements, method='BFGS'):
-    # print(method)
     engine.measurements = measurements
     result, optimize_result = engine.solve_2D(height = 0, method = method)
     print result
@@ -94,12 +102,13 @@ def compute_error(position, times=1, height=0, method='BFGS'):
     point = Point(position)
     # print point, position
     n_bad_data = 0
-    generated_engine = TDoAEngine(goal=[None, None, None], n_measurements=6)
+    generated_engine = TDoAEngine(goal=[None, None, None], n_measurements=N_MEASUREMENTS)
     while n > 0:
-        generate_data(position, generated_engine, 12)
-        result, optimize_result = generated_engine.solve_2D(height=height, method=method)
+        generate_data(position, generated_engine, N_MEASUREMENTS)
+        generated_engine.prune()
+        result, hess_inv = generated_engine.solve_2D(height=height)
         result.z = height
-        det = np.linalg.det(optimize_result.hess_inv)
+        det = np.linalg.det(hess_inv)
         if det > 10.0:
             n_bad_data += 1
         else:
@@ -120,6 +129,14 @@ def pool_compute(i):
         Z[i, j] = compute_error((x[i], yj, 0), times=2)
 
 
+def plot_anchors(plt):
+    x = []
+    y = []
+    for anchor in anchors:
+        x.append(anchor.position.x)
+        y.append(anchor.position.y)
+    plt.scatter(x, y, s=100, marker='X', c='g')
+
 def plot_all():
     global x, y, Z, X, Y
     delta = 1.0
@@ -139,7 +156,7 @@ def plot_all():
     #     pass
 
     for i, xi in enumerate(x):
-        for j, yj in enumerate(y):
+        for j, yj in enumerate(y):  
             Z[i, j] = compute_error((xi, yj, 0.31), height=0.31, times=5, method=METHOD)
             X[i, j] = xi
             Y[i, j] = yj
@@ -153,6 +170,9 @@ def plot_all():
 
     cbar = ax.figure.colorbar(im, ax=ax)
     cbar.ax.set_ylabel("Covariance (m*m)", rotation=-90, va="bottom")
+    ax.set_xlabel('X (m)')
+    ax.set_ylabel('Y (m)')
+    plot_anchors(plt)
 
     fig, ax = plt.subplots()
     im = ax.imshow(Z, cmap=cm.jet, interpolation='bilinear',
@@ -161,6 +181,9 @@ def plot_all():
 
     cbar = ax.figure.colorbar(im, ax=ax)
     cbar.ax.set_ylabel("Covariance (m*m)", rotation=-90, va="bottom")
+    ax.set_xlabel('X (m)')
+    ax.set_ylabel('Y (m)')
+    plot_anchors(plt)
 
     fig, ax = plt.subplots()
     im = ax.imshow(Z, cmap=cm.jet, interpolation='bicubic',
@@ -169,6 +192,9 @@ def plot_all():
 
     cbar = ax.figure.colorbar(im, ax=ax)
     cbar.ax.set_ylabel("Covariance (m*m)", rotation=-90, va="bottom")
+    ax.set_xlabel('X (m)')
+    ax.set_ylabel('Y (m)')
+    plot_anchors(plt)
 
     plt.show()
 

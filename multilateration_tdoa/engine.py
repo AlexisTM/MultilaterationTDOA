@@ -19,34 +19,44 @@ class TDoAMeasurement(object):
         return "".join([
             '\nA: ', str(self.anchorA.position),
             '\nB: ', str(self.anchorB.position),
-            '\ntdoa; ', str(self.tdoa)
+            '\ntdoa: ', str(self.tdoa)
         ])
+    
+    def __eq__(self, other):
+        if self.anchorA.ID == other.anchorA.ID and self.anchorB.ID == other.anchorB.ID:
+            return True
+        if self.anchorA.ID == other.anchorB.ID and self.anchorB.ID == other.anchorA.ID:
+            return True
+        return False
 
     def __repr__(self):
         return self.__str__()
 
 
 class TDoAEngine(object):
-    def __init__(self, goal=[None, None, None], n_measurements=8):
+    def __init__(self, goal=[None, None, None], n_measurements=8, n_keep=0):
         self.measurements = []
         self.n_measurements = n_measurements
+        self.n_keep = n_keep
         self.goal = goal
         self.last_result = Point(0,0,0)
+        self.method = 'BFGS'
 
     def add(self, measurement):
+        """Add a measurement in the array."""
         self.measurements.append(measurement)
 
-    def add_get(self, measurement, n_measurements = 8):
-        self.add(measurement)
-        if len(self.measurements) >= self.n_measurements:
-            return self.get()
-
     def get(self):
+        """Returns the measurements and keep the self.n_keep last measurements."""
         measures = self.measurements
-        self.measurements = []
+        if self.n_keep == 0:
+            self.measurements = []
+        else:
+            self.measurements = measures[-self.n_keep:]
         return measures
 
     def cost_function(self, last_result, measurements):
+        """Cost function for the 3D problem"""
         e = 0
         for mea in measurements:
             # print(mea.anchorA.position, last_result)
@@ -55,30 +65,61 @@ class TDoAEngine(object):
             e += error**2
         return e
 
-    def solve(self, method='BFGS'):
+    def solve(self):
+        """Optimize the position for LSE using in a 3D problem."""
         measurements = self.get()
         approx = np.array([self.last_result.x, self.last_result.y, self.last_result.z])
-        result = minimize(self.cost_function, approx, args=(measurements), method=method)
+        result = minimize(self.cost_function, approx, args=(measurements), method=self.method)
         ans = list(result.x)
         self.last_result = Point(ans)
-        return Point(ans), result
+        return Point(ans), result.hess_inv
 
     def cost_function_2D(self, last_result, measurements, height):
+        """
+        Cost function for the 2D problem.
+        It returns the Sum(error^2) between the approximation and the measurements.
+        """
         e = 0
-        other = Point(last_result)
-        other.z = height
+        approx = Point(last_result)
+        approx.z = height
         for mea in measurements:
-            error = mea.tdoa - (mea.anchorA.position.dist(other) - mea.anchorB.position.dist(other))
-            e += error**2
+            error = mea.tdoa - (mea.anchorA.position.dist(approx) - mea.anchorB.position.dist(approx))
+            e += error**2 # Squared error problem
         return e
 
-    def solve_2D(self, height, method='BFGS'):
+    def solve_2D(self, height = 0.0):
+        """Optimize the position for LSE using a fixed height."""
         measurements = self.get()
         approx = np.array([self.last_result.x, self.last_result.y])
-        result = minimize(self.cost_function_2D, approx, args=(measurements, height), method=method)
+        result = minimize(self.cost_function_2D, approx, args=(measurements, height), method=self.method)
         ans = list(result.x)
         self.last_result = Point(ans)
-        return Point(ans), result
+        return Point(ans), result.hess_inv
+
+    def add_solve_2D(self, measurement, height = 0.0):
+        """
+        Add a measurement and optimize the position for LSE using a fixed height.
+        This gives the proper flow for using the library.
+        """
+        self.add(measurement)
+        self.prune()
+        if self.ready():
+            return self.solve_2D(height)
+        return None
+    
+    def ready(self):
+        """Returns true if we have the expected number of measurements in our buffer."""
+        return len(self.measurements) >= self.n_measurements
+
+    def prune(self):
+        """
+        Removing the wrong measurements: Too old, or from/to the same anchors.
+        """
+        filtered = []
+        for mea in reversed(self.measurements):
+            if mea not in filtered:
+                filtered.append(mea)
+        self.measurements = filtered
 
 
 class Anchor(object):

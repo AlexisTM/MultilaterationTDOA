@@ -4,7 +4,6 @@
 import numpy as np
 from scipy.optimize import minimize
 from .geometry import Point, Circle
-from .methods import LSEMethod
 from time import time
 from collections import defaultdict
 

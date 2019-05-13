@@ -10,4 +10,8 @@ This library fits your use-case if:
     * Position anchor 1 (m)
     * Position anchor 2 (m)
     * TDoA (m, you can take the time divided by the speed of light for the conversion)
+    * With P = receiver position
+    * With A = Anchor A position
+    * With B = Anchor B position
+    * TDoA = |PB| - |PA|
 

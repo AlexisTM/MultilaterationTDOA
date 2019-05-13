@@ -21,7 +21,7 @@ def noise():
     return random.random()*NOISE
 
 def tdoa(A,B,P):
-    return P.dist(A)-P.dist(B) + noise()
+    return P.dist(B)-P.dist(A) + noise()
 
 def fakeTDOA(A,B,P):
     return TDoAMeasurement(A, B, tdoa(A,B,P))

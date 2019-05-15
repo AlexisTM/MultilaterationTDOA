@@ -34,11 +34,10 @@ class TDoAMeasurement(object):
 
 
 class TDoAEngine(object):
-    def __init__(self, goal=[None, None, None], n_measurements=8, n_keep=0, max_dist_hess=0.5):
+    def __init__(self, n_measurements=8, n_keep=0, max_dist_hess=0.5):
         self.measurements = []
         self.n_measurements = n_measurements
         self.n_keep = n_keep
-        self.goal = goal
         self.last_result = Point(0,0,0)
         self.method = 'BFGS'
         self.max_dist_hess_squared = max_dist_hess
@@ -57,12 +56,13 @@ class TDoAEngine(object):
         return measures
 
     def cost_function(self, approx, measurements):
-        """Cost function for the 3D problem"""
+        """
+        Cost function for the 3D problem
+        TODO: Use weighed least square cost function
+        """
         e = 0
         for mea in measurements:
-            # print(mea.anchorA.position, approx)
             error = mea.tdoa - (mea.anchorB.position.dist(approx) - mea.anchorA.position.dist(approx))
-            # print(error, mea)
             e += error**2
         return e
 
@@ -71,25 +71,35 @@ class TDoAEngine(object):
         measurements = self.get()
         approx = np.array([self.last_result.x, self.last_result.y, self.last_result.z])
         result = minimize(self.cost_function, approx, args=(measurements), method=self.method)
-        ans = list(result.x)
-        self.last_result = Point(ans)
-        return Point(ans), result.hess_inv
+        position = Point(list(result.x))
+
+        if(type(result.hess_inv) == LbfgsInvHessProduct):
+            hess_inv = result.hess_inv.todense()
+        else:
+            hess_inv = result.hess_inv
+        dist = self.scalar_hess_squared(hess_inv)
+        if dist < self.max_dist_hess_squared:
+            self.last_result = position
+
+        self.last_result = position
+        return position, hess_inv
 
     def cost_function_2D(self, approx, measurements, height):
         """
         Cost function for the 2D problem.
         It returns the Sum(error^2) between the approximation and the measurements.
+        TODO: Use weighed least square cost function
         """
         e = 0
         approx = Point(approx)
         approx.z = height
         for mea in measurements:
             error = mea.tdoa - (mea.anchorB.position.dist(approx) - mea.anchorA.position.dist(approx))
-            e += error**2 # Squared error problem
+            e += error**2
         return e
 
     def solve_2D(self, height = 0.0):
-        """Optimize the position for LSE using a fixed height."""
+        """Optimize the position for LSE using a fixed height to reduce problem complexity."""
         measurements = self.get()
         approx = np.array([self.last_result.x, self.last_result.y])
         result = minimize(self.cost_function_2D, approx, args=(measurements, height), method=self.method)
@@ -99,11 +109,9 @@ class TDoAEngine(object):
         else:
             hess_inv = result.hess_inv
         dist = self.scalar_hess_squared(hess_inv)
-        if dist > self.max_dist_hess_squared:
-            print("Would have died....")
-            return None, None
-        self.last_result = position
-        return position, result.hess_inv
+        if dist < self.max_dist_hess_squared:
+            self.last_result = position
+        return position, hess_inv
 
     def add_solve_2D(self, measurement, height = 0.0):
         """
@@ -131,7 +139,8 @@ class TDoAEngine(object):
                 filtered.append(mea)
         self.measurements = filtered
 
-    def scalar_hess_squared(self, hess):
+    @staticmethod
+    def scalar_hess_squared(hess):
         return hess[0][0]**2 + hess[0][1]**2 + hess[1][0]**2 + hess[1][1]**2
 
 class Anchor(object):

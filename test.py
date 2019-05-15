@@ -1,79 +1,79 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from __future__ import division, print_function
 from multilateration_tdoa import TDoAEngine, TDoAMeasurement, Anchor, Point
 from math import sqrt
-import random
-random.seed()
+import numpy as np
 
 NOISE = 0.25
+MEAN_NOISE = 0.0
+print("Configuration:")
+print("-> Gaussian noise std:  ", NOISE)
+print("-> Gaussian noise mean: ", MEAN_NOISE)
+print("-> TDOA = |PB| - |PA| + noise()")
 
 def noise():
-    return random.random()*NOISE
+    return np.random.normal(MEAN_NOISE, NOISE)
 
-engine = TDoAEngine(goal=[None, None, None], n_measurements=6) # To fix that the resulting height should be 2 meters
-# P=multilateration.Project() # for 3D, simply do not set a goal
+def tdoa(A,B,P):
+    return P.dist(B)-P.dist(A) + noise()
 
+def fakeTDOA(A,B,P):
+    return TDoAMeasurement(A, B, tdoa(A,B,P))
+
+def show_result(result, hess_inv, expected):
+    print("result       x: %.2f    y: %.2f    z: %.2f" % (result.x, result.y, result.z))
+    print("expected     x: %.2f    y: %.2f    z: %.2f" % (expected.x, expected.y, expected.z))
+    if len(hess_inv) == 3:
+        print("hessian_inv: x: %.2f    y: %.2f    z: %.2f: (this is estimated from data)" % (hess_inv[0][0], hess_inv[1][1], hess_inv[2][2]))
+    else:
+        print("hessian_inv: x: %.2f    y: %.2f             (this is estimated from data)" % (hess_inv[0][0], hess_inv[1][1]))
+    error = result.dist(expected)
+    print("real error:     %.4f      (this is computed from the simulation ground truth)" % error)
+
+engine = TDoAEngine(n_measurements=6, max_dist_hess=100) # Avoid value rejection.
 
 A = Anchor((3,3,0))
 B = Anchor((-2,2,0))
 C = Anchor((2,-4,0))
 D = Anchor((-3,-2,0))
+P = Point(0,0,0)
 
-engine.add(TDoAMeasurement(A, C, 0.23 + noise()))
-engine.add(TDoAMeasurement(A, B, -1.41 + noise()))
-engine.add(TDoAMeasurement(A, D, -0.64 + noise()))
-engine.add(TDoAMeasurement(B, C, 1.64 + noise()))
-engine.add(TDoAMeasurement(B, D, 0.78 + noise()))
-engine.add(TDoAMeasurement(C, D, -0.87 + noise()))
+engine.add(fakeTDOA(A, C, P))
+engine.add(fakeTDOA(A, B, P))
+engine.add(fakeTDOA(A, D, P))
+engine.add(fakeTDOA(B, C, P))
+engine.add(fakeTDOA(B, D, P))
+engine.add(fakeTDOA(C, D, P))
 
+print("\n\nSolve in 3D from anchors on the ground and tag on the ground")
 result, hess_inv = engine.solve()
-print(result)
-expected = Point(0,0,0)
-print("Error = ", expected.dist(result))
-# Expected result = (0,0,0)
-
-
-engine.add(TDoAMeasurement(A, C, 2.2 + noise()))
-engine.add(TDoAMeasurement(A, B, 0.29 + noise()))
-engine.add(TDoAMeasurement(A, D, -0.12 + noise()))
-engine.add(TDoAMeasurement(B, C, -2.49 + noise()))
-engine.add(TDoAMeasurement(B, D, -0.41 + noise()))
-engine.add(TDoAMeasurement(C, D, 2.08 + noise()))
-
-result, hess_inv = engine.solve()
-print(result)
-expected = Point(1.58,-1.51,0)
-print("Error = ", expected.dist(result))
-# Expected result P= (1.58,-1.51)
-
-
+show_result(result, hess_inv, P)
 
 A = Anchor((3,3,1))
 B = Anchor((-2,2,2))
 C = Anchor((2,-4,3))
 D = Anchor((-3,-2,2))
+P = Point((1.58,-1.51,0.31))
 
-engine.add(TDoAMeasurement(A, C, -1.09 + noise()))
-engine.add(TDoAMeasurement(A, B, 0.51 + noise()))
-engine.add(TDoAMeasurement(A, D, 0.13 + noise()))
-engine.add(TDoAMeasurement(B, C, -1.6 + noise()))
-engine.add(TDoAMeasurement(B, D, -0.38 + noise()))
-engine.add(TDoAMeasurement(C, D, 1.22 + noise()))
+engine.add(fakeTDOA(A, C, P))
+engine.add(fakeTDOA(A, B, P))
+engine.add(fakeTDOA(A, D, P))
+engine.add(fakeTDOA(B, C, P))
+engine.add(fakeTDOA(B, D, P))
+engine.add(fakeTDOA(C, D, P))
 
+print("\n\nSolve in 3D from anchors between 1 and 3 meters, tag at 0.31cm. The first Z approximation is exact.")
 m = engine.get()
 engine.measurements = m
-engine.last_result.z = 0.31
-# P= (1.58,-1.51,0.31)
+engine.last_result = Point(0,0,0.31)
 result, hess_inv = engine.solve()
+show_result(result, hess_inv, P)
 
-print(result)
-expected = Point(1.58,-1.51,0.31)
-print("Error3D = ", expected.dist(result))
-
-
+print("\n\nSolve in 2D with fixed height at 0.31cm with anchors between 1 and 3 meters and tag at 0.31cm.")
+# Use the same measurements to have correlated results.
 engine.measurements = m
+engine.last_result = Point(0,0,0) # Reset it to avoid to be pre converged from last result.
 result, hess_inv = engine.solve_2D(0.31)
-result.z = 0.31
-print(result)
-print("Error2D = ", expected.dist(result))
+show_result(result, hess_inv, P)

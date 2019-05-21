@@ -15,6 +15,8 @@ This library fits your use-case if:
     * With B = Anchor B position
     * TDoA = |PB| - |PA|
 
+More information about [Algorithmics.md](Algorithmics.md), **feel free to help adding the Jacobian to the minimization function.**
+
 ## Minimal example
 
 ```python

@@ -1,6 +1,8 @@
 # MultilaterationTDOA
 This library will be used for TDoA localization from a [Bitcraze loco positioning system](https://www.bitcraze.io/loco-pos-system/).
 
+**If you feel that something is wrong, please share it.**
+
 This library fits your use-case if:
 
 * **Setup**:
@@ -15,7 +17,17 @@ This library fits your use-case if:
     * With B = Anchor B position
     * TDoA = |PB| - |PA|
 
-More information about [Algorithmics.md](Algorithmics.md), **feel free to help adding the Jacobian to the minimization function.**
+If you want information about the jacobians for fusing with a Kalman filter or using it in your optimization problem, you can look into [Algorithmics.md](Algorithmics.md).
+
+## Usage with Bitcraze Roadrunner and Loco positionning nodes
+
+Install this library:
+
+```bash
+sudo python setup.py install
+```
+
+Then, follow the instructions available in the [MAVLink layer README.md](https://github.com/umdlife/roadrunner_mavlink)
 
 ## Minimal example
 
@@ -31,24 +43,33 @@ NOISE = 0.25
 MEAN_NOISE = 0.0
 
 def noise():
+    """Returns gaussian noise"""
     return np.random.normal(MEAN_NOISE, NOISE)
+
+def tdoa(A,B,P):
+    """Computes |PB| - |PA| + gaussian noise"""
+    return P.dist(B)-P.dist(A) + noise()
+
+def fakeTDOA(A,B,P):
+    """Returns a fake measurements with anchors A, B from a point P"""
+    return TDoAMeasurement(A, B, tdoa(A,B,P))
 
 engine = TDoAEngine(n_measurements=6, max_dist_hess=100) # Avoid value rejection.
 
+# Real world anchor positions
 A = Anchor((3,3,0))
 B = Anchor((-2,2,0))
 C = Anchor((2,-4,0))
 D = Anchor((-3,-2,0))
 P = Point(0,0,0)
 
-# These distances are computed from geogebra
-engine.add(TDoAMeasurement(A, C, 0.23 + noise()))
-engine.add(TDoAMeasurement(A, B, -1.41 + noise()))
-engine.add(TDoAMeasurement(A, D, -0.64 + noise()))
-engine.add(TDoAMeasurement(B, C, 1.64 + noise()))
-engine.add(TDoAMeasurement(B, D, 0.78 + noise()))
-engine.add(TDoAMeasurement(C, D, -0.87 + noise()))
-
+# Faking measurements
+engine.add(fakeTDOA(A, C, P))
+engine.add(fakeTDOA(A, B, P))
+engine.add(fakeTDOA(A, D, P))
+engine.add(fakeTDOA(B, C, P))
+engine.add(fakeTDOA(B, D, P))
+engine.add(fakeTDOA(C, D, P))
 
 print("\n\nSolve in 3D from anchors on the ground and tag on the ground")
 result, hess_inv = engine.solve()

@@ -84,6 +84,23 @@ class TDoAEngine(object):
         self.last_result = position
         return position, hess_inv
 
+    def jacobian_2D(self, estimate, measurements, height):
+        # According to: https://github.com/AlexisTM/MultilaterationTDOA/blob/master/Algorithmics.md
+        jacobian = np.array([0.0, 0.0])
+        approx = Point(estimate)
+        approx.z = height
+        for mea in measurements:
+            PA = approx.dist(mea.anchorA)
+            PB = approx.dist(mea.anchorB)
+            mult = PB-PA-mea.tdoa
+            jacobian[0] += 2*((approx.x-mea.anchorB.position.x)/PB - (approx.x-mea.anchorA.position.x)/PA)*mult
+            jacobian[1] += 2*((approx.y-mea.anchorB.position.y)/PB - (approx.y-mea.anchorA.position.y)/PA)*mult
+            # Doing it for each member separetely is about ~35% faster
+            # j = 2*((approx-mea.anchorB.position)/PB - (approx-mea.anchorA.position)/PA)*(PB-PA-mea.tdoa)
+            # jacobian[0] += j.x
+            # jacobian[1] += j.y
+        return jacobian
+
     def cost_function_2D(self, approx, measurements, height):
         """
         Cost function for the 2D problem.
@@ -102,7 +119,7 @@ class TDoAEngine(object):
         """Optimize the position for LSE using a fixed height to reduce problem complexity."""
         measurements = self.get()
         approx = np.array([self.last_result.x, self.last_result.y])
-        result = minimize(self.cost_function_2D, approx, args=(measurements, height), method=self.method)
+        result = minimize(self.cost_function_2D, approx, args=(measurements, height), method=self.method, jac=self.jacobian_2D)
         position = Point(list(result.x) + [height])
         if(type(result.hess_inv) == LbfgsInvHessProduct):
             hess_inv = result.hess_inv.todense()

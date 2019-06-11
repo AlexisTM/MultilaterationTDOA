@@ -1,5 +1,5 @@
 # MultilaterationTDOA
-This library will be used for TDoA localization from a [Bitcraze loco positioning system](https://www.bitcraze.io/loco-pos-system/).
+This library will be used for TDoA localization from a [Bitcraze loco positioning system](https://www.bitcraze.io/loco-pos-system/). This is a side project which is imperfect and there is no warranty of success for your application.
 
 **If you feel that something is wrong, please share it.**
 
@@ -18,6 +18,8 @@ This library fits your use-case if:
     * TDoA = |PB| - |PA|
 
 If you want information about the jacobians for fusing with a Kalman filter or using it in your optimization problem, you can look into [Algorithmics.md](Algorithmics.md).
+
+In the case you are using time synchronised anchors which are only receiving, [this paper](http://files.andersen.im/analytics/Convex%20Optimization%20-%20Comparative%20Analysis%20of%20Multilateration%20Methods%20for%20Signal%20Emitter%20Positioning.pdf) describes a method allowing to reduce the problem to a linear system (3D with 5 anchors).
 
 ## Usage with Bitcraze Roadrunner and Loco positionning nodes
 
@@ -87,6 +89,13 @@ To test the system, you can configure and run `python test.py` to locate from si
 You can configure then run `python anchor_position_test.py` to generate a heatmap of localization quality.
 
 ![anchor_test_example.png](img/anchor_test_example.png)
+
+## Caveats
+
+- There is a discontinuity in the jacobians if the tag position or the optimization path is going close to one of the anchors, highlighted in the [issue #1](https://github.com/AlexisTM/MultilaterationTDOA/issues/1)
+- Outlier rejection is weak and can be improved: if measures highly differ from the last [valid] result, the measurement is rejected. 
+- The optimization problem is taking all the measuremnts as a whole and there is therefore no weighing of the measurements: Depending on the location of the tag, the error for the measurements can lead to very high errors; Meaning that a single measurement could lead to divergence. 
+- The results are very noisy and I advise to filter it in a Kalman filter. Ideally having the output of the Kalman filter as the last result of the optimization problem for faster convergence.
 
 ## Author
 

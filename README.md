@@ -1,4 +1,7 @@
 # MultilaterationTDOA
+
+> Due to the lack of hardware available to me, this project cannot be maintained. Regardless, this was never meant to be used as is but just a way to understand rTDoA. (Passive tags, active anchors) 
+
 This library will be used for TDoA localization from a [Bitcraze loco positioning system](https://www.bitcraze.io/loco-pos-system/). This is a side project which is imperfect and there is no warranty of success for your application.
 
 **If you feel that something is wrong, please share it.**
